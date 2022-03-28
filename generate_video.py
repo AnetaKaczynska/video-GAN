@@ -3,7 +3,7 @@ import glob
 from moviepy.editor import *
 
 
-images = glob.glob(r'/home/z1143165/pytorch_GAN_zoo_2/output_networks/jelito3d_batchsize8/jelito3d_batchsize8_s8_i200000_interpolations/?_?/*')
+images = glob.glob(r'/home/z1143165/video-GAN/output_networks/jelito3d_batchsize8/jelito3d_batchsize8_s8_i200000_interpolations/?_?/*')
 images = sorted(images)
 print('generating')
 for img in images:

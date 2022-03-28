@@ -147,6 +147,7 @@ class GANVisualizer():
 
             for i in range(currBatch):
                 imgPath = os.path.join(path, "gen_" + str(index) + ".jpg")
+                print('\n\n\n', size, '\n\n\n')
                 self.visualizer.saveTensor(img[i].view(1, 3, size[0], size[1]),
                                            size, imgPath)
                 index += 1

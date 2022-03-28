@@ -6,7 +6,7 @@ import torchvision.utils as vutils
 import numpy as np
 import random
 
-vis = visdom.Visdom()
+# vis = visdom.Visdom()
 
 
 def resizeTensor(data, out_size_image):

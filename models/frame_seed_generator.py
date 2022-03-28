@@ -14,9 +14,9 @@ class FrameSeedGenerator(nn.Module):
         self.fc3 = nn.Linear(512, 512)     # D = 512
 
     def forward(self, x):
-        x = torch.sin(self.fc1(x))
+        x = torch.cos(self.fc1(x))
         x = torch.cos(self.fc2(x))
-        x = torch.sin(self.fc3(x))
+        x = torch.cos(self.fc3(x))
         # normalize
         x = x / torch.norm(x) * math.sqrt(self.D)
         return x

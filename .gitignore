@@ -1,3 +1,6 @@
 output_networks/*
+checkpoints/*
+fakes/*
+runs/*
 *.pyc
 setup.py
