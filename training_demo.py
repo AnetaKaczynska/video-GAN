@@ -1,9 +1,7 @@
-from os import O_SYNC
-
-
 import os
 import sys
 import json
+from datetime import datetime
 
 from moviepy.editor import ImageSequenceClip
 import numpy as np
@@ -46,7 +44,11 @@ def load_progan():
 
 
 if __name__ == "__main__":
-    log_writer = SummaryWriter('/home/z1143165/video-GAN/runs')
+    now = datetime.now()
+    date = now.strftime("%d.%m.%Y_%H:%M:%S")
+    log_writer = SummaryWriter(f'/home/z1143165/video-GAN/runs/video-GAN_{date}')
+    os.mkdir(f'fakes/{date}')
+    os.mkdir(f'checkpoints/{date}')
 
     fsg = FrameSeedGenerator().cuda()
     n_frames = 8
@@ -63,11 +65,12 @@ if __name__ == "__main__":
     real_videos = RealVideos()
     dataloader = DataLoader(real_videos, batch_size=1, shuffle=True)
 
-    epochs = 10
+    epochs = 20
 
     fsg.train()
     vdis.train()
     for epoch in range(epochs):
+        print(epoch)
         total_loss = 0
         for real_video in dataloader:
             seeds = torch.rand([n_frames, 2047])
@@ -90,16 +93,15 @@ if __name__ == "__main__":
             optimizer.step()
 
             total_loss += loss.item()
-            break
         
         log_writer.add_scalar('Loss/train', total_loss, epoch)
-        torch.save(fsg.state_dict(), '/home/z1143165/video-GAN/checkpoints/frame_seed_generator.pt')
-        torch.save(vdis.state_dict(), '/home/z1143165/video-GAN/checkpoints/video_discriminator.pt')
+        torch.save(fsg.state_dict(), f'checkpoints/{date}/frame_seed_generator.pt')
+        torch.save(vdis.state_dict(), f'checkpoints/{date}/video_discriminator.pt')
 
         fake_video = fake_video.detach().cpu().reshape(n_frames, 3, 1024, 1024)
-        os.mkdir(f'fakes/epoch_{epoch}')
+        os.mkdir(f'fakes/{date}/epoch_{epoch}')
         for i, frame in enumerate(fake_video):
-            saveTensor(frame.unsqueeze(0), (1024, 1024), f'fakes/epoch_{epoch}/frame_{i}.jpg')
+            saveTensor(frame.unsqueeze(0), (1024, 1024), f'fakes/{date}/epoch_{epoch}/frame_{i}.jpg')
 
         # save video
         # fake_video = fake_video.detach().cpu()
