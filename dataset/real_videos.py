@@ -1,14 +1,10 @@
 import os
 import re
-import glob
-from itertools import groupby
-from collections import defaultdict
 
 import numpy as np
 from PIL import Image
 import torch
 from torch.utils.data import Dataset
-from torchvision import transforms
 
 
 class RealVideos(Dataset):
@@ -27,12 +23,12 @@ class RealVideos(Dataset):
         return len(self.video_names)
 
     def __getitem__(self, i):
-        video = np.empty((self.ch, self.duration, self.h, self.w), dtype=np.float32)
+        video = np.empty((self.duration, self.ch, self.h, self.w), dtype=np.float32)
         video_name = self.video_names[i]
         for t in range(self.duration):
             img_path = self.img_dir + f'/{video_name}_{t}.jpg'
-            img = np.asarray(Image.open(img_path).resize((self.h, self.w)), dtype=np.uint8).transpose(2, 0, 1)
-            video[:, t] = img
+            img = np.asarray(Image.open(img_path), dtype=np.uint8).transpose(2, 0, 1)
+            video[t] = img
         return torch.as_tensor(video)
 
 

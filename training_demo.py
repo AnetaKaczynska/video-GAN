@@ -1,10 +1,7 @@
 import os
-import sys
 import json
 from datetime import datetime
 
-from moviepy.editor import ImageSequenceClip
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -18,11 +15,8 @@ from dataset.real_videos import RealVideos
 from visualization.visualizer import saveTensor
 
 
-def load_progan():
-    name = 'jelito3d_batchsize8'
-    checkPointDir = '/home/z1143165/video-GAN/output_networks/jelito3d_batchsize8'
+def load_progan(name='jelito3d_batchsize8', checkPointDir='output_networks/jelito3d_batchsize8'):
     checkpointData = getLastCheckPoint(checkPointDir, name, scale=None, iter=None)
-
     modelConfig, pathModel, _ = checkpointData
     _, scale, _ = parse_state_name(pathModel)
 
@@ -40,65 +34,88 @@ def load_progan():
     for param in model.avgG.parameters():
         assert not (param.requires_grad)
 
+    # freeze discriminator weights
+    for param in model.netD.parameters():
+        param.requires_grad = False
+        assert not (param.requires_grad)
+
     return model
+
+
+def clip_singular_value(A):
+    U, s, Vh = torch.linalg.svd(A, full_matrices=False)
+    s[s > 1] = 1
+    return U @ torch.diag(s) @ Vh
 
 
 if __name__ == "__main__":
     now = datetime.now()
-    date = now.strftime("%d.%m.%Y_%H:%M:%S")
-    log_writer = SummaryWriter(f'/home/z1143165/video-GAN/runs/video-GAN_{date}')
+    date = now.strftime("%Y.%m.%d_%H.%M.%S")
+    log_writer = SummaryWriter(f'runs/video-GAN_{date}')
     os.mkdir(f'fakes/{date}')
     os.mkdir(f'checkpoints/{date}')
 
     fsg = FrameSeedGenerator().cuda()
     n_frames = 8
-    time = torch.arange(n_frames).unsqueeze(1)
+    time = torch.arange(n_frames).unsqueeze(1).cuda()
 
     progan = load_progan()
 
-    vdis = VideoDiscriminator(3, 4, 64).cuda()
+    vdis = VideoDiscriminator().cuda()
 
     criterion = nn.L1Loss()
     params = list(fsg.parameters()) + list(vdis.parameters())
     optimizer = optim.RMSprop(params, lr=0.00005)
 
     real_videos = RealVideos()
-    dataloader = DataLoader(real_videos, batch_size=1, shuffle=True)
+    dataloader = DataLoader(real_videos, batch_size=None, shuffle=True)
 
-    epochs = 20
+    epochs = 50
 
     fsg.train()
     vdis.train()
     for epoch in range(epochs):
-        print(epoch)
+        print(f'epoch: {epoch}')
         total_loss = 0
+        dis_loss = 0
+        gen_loss = 0
         for real_video in dataloader:
-            seeds = torch.rand([n_frames, 2047])
-            input = torch.hstack([time, seeds]).cuda()
-
-            input = fsg(input)
-
-            output = progan.avgG(input)
-
-            fake_video = output.reshape([1, 3, n_frames, 1024, 1024])   # (N, CH, T, H, W)
-            real_video = real_video.cuda()
+            seeds = torch.rand([1, 2047]).tile(n_frames, 1).cuda()
+            input = fsg(seeds, time)          # (N, 512)
+            fake_video = progan.avgG(input)   # (N, CH, H, W)
 
             optimizer.zero_grad()
 
-            dis_fake = vdis(fake_video)
-            dis_real = vdis(real_video)
+            _, fake_latent = progan.netD(fake_video, getFeature=True)   # (N, 512)
+            _, real_latent = progan.netD(real_video, getFeature=True)   # (N, 512)
+            dis_fake = vdis(fake_latent.permute(1, 0).unsqueeze(0))     # (1, 512, N) -> (1, 1)
+            dis_real = vdis(real_latent.permute(1, 0).unsqueeze(0))     # (1, 512, N) -> (1, 1)
+
             loss = criterion(dis_fake, dis_real)
+
+            total_loss += loss.item()
+            dis_loss += loss.item()
+            gen_loss += dis_fake.item()
 
             loss.backward()
             optimizer.step()
 
-            total_loss += loss.item()
+            # this can be done less often (once in 5 iterations)
+            for param in vdis.parameters():
+                # clip weights for convolutions
+                if len(param.shape) >= 3:
+                    A = param.data.reshape((param.data.shape[0], -1))
+                    A = clip_singular_value(A)
+                    param.data = A.reshape(param.data.shape)
+
         
         log_writer.add_scalar('Loss/train', total_loss, epoch)
+        log_writer.add_scalar('Discriminator loss/train', dis_loss, epoch)
+        log_writer.add_scalar('Generator loss/train', gen_loss, epoch)
         torch.save(fsg.state_dict(), f'checkpoints/{date}/frame_seed_generator.pt')
         torch.save(vdis.state_dict(), f'checkpoints/{date}/video_discriminator.pt')
 
-        fake_video = fake_video.detach().cpu().reshape(n_frames, 3, 1024, 1024)
+        fake_video = fake_video.detach().cpu()
         os.mkdir(f'fakes/{date}/epoch_{epoch}')
         for i, frame in enumerate(fake_video):
             saveTensor(frame.unsqueeze(0), (1024, 1024), f'fakes/{date}/epoch_{epoch}/frame_{i}.jpg')
