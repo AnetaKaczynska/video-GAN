@@ -64,8 +64,8 @@ if __name__ == "__main__":
     vdis = VideoDiscriminator().cuda()
 
     criterion = nn.L1Loss()
-    params = list(fsg.parameters()) + list(vdis.parameters())
-    optimizer = optim.RMSprop(params, lr=0.00005)
+    optimizer_G = optim.RMSprop(fsg.parameters(), lr=0.00005)
+    optimizer_D = optim.RMSprop(vdis.parameters(), lr=0.00005)
 
     real_videos = RealVideos()
     dataloader = DataLoader(real_videos, batch_size=None, shuffle=True)
@@ -76,42 +76,55 @@ if __name__ == "__main__":
     vdis.train()
     for epoch in range(epochs):
         print(f'epoch: {epoch}')
-        total_loss = 0
         dis_loss = 0
         gen_loss = 0
-        for real_video in dataloader:
+        for iter, real_video in enumerate(dataloader):
             seeds = torch.rand([1, 2047]).tile(n_frames, 1).cuda()
             input = fsg(seeds, time)          # (N, 512)
-            fake_video = progan.avgG(input)   # (N, CH, H, W)
+            fake_video = progan.avgG(input)   # (N, CH, H, W)        
 
-            optimizer.zero_grad()
-
-            _, fake_latent = progan.netD(fake_video, getFeature=True)   # (N, 512)
+            # update discriminator
+            optimizer_D.zero_grad()
+            _, fake_latent = progan.netD(fake_video.detach(), getFeature=True)   # (N, 512)
             _, real_latent = progan.netD(real_video, getFeature=True)   # (N, 512)
             dis_fake = vdis(fake_latent.permute(1, 0).unsqueeze(0))     # (1, 512, N) -> (1, 1)
             dis_real = vdis(real_latent.permute(1, 0).unsqueeze(0))     # (1, 512, N) -> (1, 1)
 
-            loss = criterion(dis_fake, dis_real)
+            loss_dis_fake = torch.sum(dis_fake)
+            loss_dis_real = -torch.sum(dis_real)
+            loss_dis = loss_dis_real + loss_dis_fake    
+            loss_dis.backward()
+            optimizer_D.step()
 
-            total_loss += loss.item()
-            dis_loss += loss.item()
-            gen_loss += dis_fake.item()
+            # update generator
+            optimizer_G.zero_grad()
+            _, fake_latent = progan.netD(fake_video, getFeature=True)   # (N, 512)
+            dis_fake = vdis(fake_latent.permute(1, 0).unsqueeze(0))     # (1, 512, N) -> (1, 1)
+            loss_gen = -torch.sum(dis_fake)
+            loss_gen.backward()
+            optimizer_G.step()
 
-            loss.backward()
-            optimizer.step()
+            dis_loss += loss_dis.item()
+            gen_loss += loss_gen.item()
 
             # this can be done less often (once in 5 iterations)
-            for param in vdis.parameters():
-                # clip weights for convolutions
-                if len(param.shape) >= 3:
-                    A = param.data.reshape((param.data.shape[0], -1))
-                    A = clip_singular_value(A)
-                    param.data = A.reshape(param.data.shape)
+            if (iter+1) % 5 == 0:
+                for name, param in vdis.named_parameters():
+                    # clip weights for convolutions
+                    if 'weight' in name and ('conv' in name or 'fc' in name) and param.requires_grad:
+                        A = param.data.view((param.data.shape[0], -1)) 
+                        A = clip_singular_value(A)
+                        param.data = A.view(param.data.shape)
+                        # also clip bn and linear layers
 
+            if (iter+1) % 1000 == 0:
+                step = len(dataloader)*epoch+iter
+                log_writer.add_scalar('Discriminator loss/train', dis_loss, step)
+                log_writer.add_scalar('Generator loss/train', gen_loss, step)
+                total_loss = 0
+                dis_loss = 0
+                gen_loss = 0
         
-        log_writer.add_scalar('Loss/train', total_loss, epoch)
-        log_writer.add_scalar('Discriminator loss/train', dis_loss, epoch)
-        log_writer.add_scalar('Generator loss/train', gen_loss, epoch)
         torch.save(fsg.state_dict(), f'checkpoints/{date}/frame_seed_generator.pt')
         torch.save(vdis.state_dict(), f'checkpoints/{date}/video_discriminator.pt')
 
