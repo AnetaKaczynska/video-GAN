@@ -2,6 +2,7 @@ import math
 
 import torch
 import torch.nn as nn
+import torch.linalg as LA
 import torch.functional as F
 
 
@@ -21,5 +22,5 @@ class FrameSeedGenerator(nn.Module):
         x = torch.hstack([time, x])
         x = torch.relu(self.fc3(x))
         # normalize
-        x = x / torch.norm(x) * math.sqrt(self.D)
+        x = x / LA.norm(x, dim=1, keepdim=True) * math.sqrt(self.D)
         return x
