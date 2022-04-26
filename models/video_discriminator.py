@@ -4,12 +4,15 @@ import torch.nn.functional as F
 
 
 class VideoDiscriminator(nn.Module):
-    def __init__(self):
+    def __init__(self, active=False):
         super(VideoDiscriminator, self).__init__()
-        self.conv1 = nn.Conv1d(512, 256, 3, 1)
+        self.conv1 = nn.Conv1d(512, 256, 4, 1)
         self.conv2 = nn.Conv1d(256, 128, 3, 1)
         self.conv3 = nn.Conv1d(128, 64, 3, 1)
-        self.fc = nn.Linear(128, 1)
+        self.fc = nn.Linear(64, 1)
+        if active:
+            self.activ_function = nn.Sigmoid()
+        self.active = active
 
     def __call__(self, x):
         x = F.relu(self.conv1(x))
@@ -17,27 +20,20 @@ class VideoDiscriminator(nn.Module):
         x = F.relu(self.conv3(x))
         x = torch.flatten(x, 1)
         x = self.fc(x)
-        return x
+        return self.activ_function(x) if self.active else x
 
 
 if __name__ == '__main__':
-    import sys
-    sys.path.append('../')
-    from dataset.real_videos import RealVideos
     from torch.utils.data import DataLoader
     
-    real_videos = RealVideos()
-    dataloader = DataLoader(real_videos, batch_size=1, shuffle=True)
-    img = next(iter(dataloader)) # .cuda()
-
     n_frames = 8
     h = 1024
     w = h
+    video = torch.rand(n_frames, 512)   # (N, 512)
+    video = video.permute(1, 0).unsqueeze(0)
     net = VideoDiscriminator() # .cuda()
     # x = torch.randn(1, 3, n_frames, h, w).cuda()  # (1, 3, 8, 1024, 1024)
 
-    img = torch.ones(1, 8, 512).permute(0,2,1)
-    print(img.shape)
-    output = net(img)
+    output = net(video)
     # from torchvision.utils import save_image
     # save_image(output, nrow=8, normalize=True, fp='test_img2.jpg')

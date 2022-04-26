@@ -20,7 +20,7 @@ class FrameSeedGenerator(nn.Module):
         x = torch.hstack([time, x])
         x = torch.relu(self.fc2(x))
         x = torch.hstack([time, x])
-        x = torch.relu(self.fc3(x))
+        x = self.fc3(x)
         # normalize
         x = x / LA.norm(x, dim=1, keepdim=True) * math.sqrt(self.D)
         return x

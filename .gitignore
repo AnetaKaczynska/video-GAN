@@ -6,3 +6,4 @@ runs/*
 *.pyc
 setup.py
 gen_fakes.py
+tmp/*
