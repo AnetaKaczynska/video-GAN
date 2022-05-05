@@ -1,6 +1,7 @@
 import os
 import re
 
+import cv2
 import numpy as np
 from PIL import Image
 import torch
@@ -27,8 +28,13 @@ class RealVideos(Dataset):
         video_name = self.video_names[i]
         for t in range(self.duration):
             img_path = self.img_dir + f'/{video_name}_{t}.jpg'
-            img = np.asarray(Image.open(img_path), dtype=np.uint8).transpose(2, 0, 1)
+            img = np.asarray(Image.open(img_path), dtype=np.float32).transpose(2, 0, 1)
             video[t] = img
+        # mean = np.mean(video, axis=(2, 3), keepdims=True)
+        # std = np.std(video, axis=(2, 3), keepdims=True)
+        # video = (video - mean) / std
+        video -= 127.5
+        video /= 127.5
         return torch.as_tensor(video)
 
 
