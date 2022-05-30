@@ -1,0 +1,36 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: training_demo",
+            "type": "python",
+            "request": "launch",
+            "module": "training_demo",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: make_videos_from_shared_imgs",
+            "type": "python",
+            "request": "launch",
+            "module": "make_videos_from_shared_imgs",
+            "justMyCode": false,
+            "args": [
+                "-v",
+                "/shared/results/Skopia/data/",
+                "-i",
+                "/shared/results/Skopia/images2/",
+                "-o",
+                "/shared/results/Skopia/videos24frames",
+                "-l",
+                "24",
+                "-s",
+                "256",
+                "-j",
+                "8",
+            ]
+        }
+    ]
+}

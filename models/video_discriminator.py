@@ -10,7 +10,7 @@ class VideoDiscriminator(nn.Module):
         self.conv2 = nn.Conv2d(16, 8, (3, 8), (1, 2))
         self.conv3 = nn.Conv2d(8, 4, (3, 6), (1, 2))
         self.conv4 = nn.Conv2d(4, 1, (2, 6), (1, 2))
-        self.fc = nn.Linear(27, 1)
+        self.fc = nn.Linear(459, 1) # before 27
         if active:
             self.activ_function = nn.Sigmoid()
         self.active = active

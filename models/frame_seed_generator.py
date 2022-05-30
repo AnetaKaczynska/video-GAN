@@ -14,13 +14,15 @@ class FrameSeedGenerator(nn.Module):
         self.fc2 = nn.Linear(1024, 511)
         self.fc3 = nn.Linear(512, 512)     # D = 512
 
-    def forward(self, seeds, time):
+    def forward(self, seeds, pro_seed, time):
         x = torch.hstack([time, seeds])
         x = torch.relu(self.fc1(x))
         x = torch.hstack([time, x])
         x = torch.relu(self.fc2(x))
         x = torch.hstack([time, x])
         x = self.fc3(x)
+
+        x = pro_seed + (x - x[:1])
         # normalize
         x = x / LA.norm(x, dim=1, keepdim=True) * math.sqrt(self.D)
         return x

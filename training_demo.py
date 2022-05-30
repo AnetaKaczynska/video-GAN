@@ -18,9 +18,9 @@ from visualization.visualizer import saveTensor
 torch.autograd.set_detect_anomaly(True)
 
 
-def load_progan(name='jelito3d_batchsize8', checkPointDir='output_networks/jelito3d_batchsize8'):
-    checkpointData = getLastCheckPoint(checkPointDir, name, scale=None, iter=None)
-    modelConfig, pathModel, _ = checkpointData
+def load_progan(name='jelito3d_batchsize8', checkPointDir='/shared/results/z1143165/jelito3d_batchsize8'):
+    checkpointData = getLastCheckPoint(checkPointDir, name, scale=6, iter=96000)
+    modelConfig, pathModel, tmpconfig = checkpointData
     _, scale, _ = parse_state_name(pathModel)
 
     module = 'PGAN'
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     os.mkdir(f'checkpoints/{date}')
 
     fsg = FrameSeedGenerator().cuda()
-    n_frames = 8
+    n_frames = 24
     time = torch.arange(n_frames).unsqueeze(1).cuda()
 
     progan = load_progan()
@@ -110,7 +110,8 @@ if __name__ == "__main__":
 
             # - fake input
             noise = torch.rand([1, 2047]).tile(n_frames, 1).cuda()
-            input = fsg(noise, time) 
+            pro_noise = torch.rand([1, 512]).cuda()
+            input = fsg(noise, pro_noise, time)
             fake_video = progan.avgG(input)
             _, fake_latent = progan.netD(fake_video.detach(), getFeature=True)   # (N, 512)
             fake_latent = fake_latent.unsqueeze(0)                               # (1, N, 512)
