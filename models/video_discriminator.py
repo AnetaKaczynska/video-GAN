@@ -32,7 +32,7 @@ if __name__ == '__main__':
     n_frames = 8
     h = 1024
     w = h
-    video = torch.rand(n_frames, 512).unsqueeze(0)   # (1, N, 512)
+    video = torch.randn(n_frames, 512).unsqueeze(0)   # (1, N, 512)
     # video = video.permute(1, 0).unsqueeze(0)
     net = VideoDiscriminator() # .cuda()
     # x = torch.randn(1, 3, n_frames, h, w).cuda()  # (1, 3, 8, 1024, 1024)

@@ -109,8 +109,8 @@ if __name__ == "__main__":
             D_x = dis_real.mean().item()
 
             # - fake input
-            noise = torch.rand([1, 2047]).tile(n_frames, 1).cuda()
-            pro_noise = torch.rand([1, 512]).cuda()
+            noise = torch.randn([1, 2047]).tile(n_frames, 1).cuda()
+            pro_noise = torch.randn([1, 512]).cuda()
             input = fsg(noise, pro_noise, time)
             fake_video = progan.avgG(input)
             _, fake_latent = progan.netD(fake_video.detach(), getFeature=True)   # (N, 512)

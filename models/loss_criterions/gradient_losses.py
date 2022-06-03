@@ -19,7 +19,7 @@ def WGANGPGradientPenalty(input, fake, discriminator, weight, backward=True):
     """
 
     batchSize = input.size(0)
-    alpha = torch.rand(batchSize, 1)
+    alpha = torch.randn(batchSize, 1)
     alpha = alpha.expand(batchSize, int(input.nelement() /
                                         batchSize)).contiguous().view(
                                             input.size())
