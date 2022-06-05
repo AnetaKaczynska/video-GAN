@@ -58,7 +58,7 @@ def clip_singular_value(A):
 if __name__ == "__main__":
     now = datetime.now()
     date = now.strftime("%Y.%m.%d_%H.%M.%S")
-    name = f'{date}'
+    name = f'{date}_gradual_pretraining'
     log_writer = SummaryWriter(f'runs/{name}')
     os.mkdir(f'fakes/{name}')
     # os.mkdir(f'reals/{name}')
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     progan = load_progan()
 
     vdis = VideoDiscriminator(True)
-    # vdis.load_state_dict(torch.load(f'checkpoints/{name}/video_discriminator_epoch_0.pt'))
+    # vdis.load_state_dict(torch.load(f'checkpoints/{name}/video_discriminator_epoch_4.pt'))
     vdis.cuda()
 
     criterion = nn.BCELoss()
@@ -82,14 +82,14 @@ if __name__ == "__main__":
     optimizer_G = optim.Adam(fsg.parameters(), lr=lr, betas=(beta1, 0.999))   # RMSprop(fsg.parameters(), lr=0.00005)
     optimizer_D = optim.Adam(vdis.parameters(), lr=lr, betas=(beta1, 0.999))   # RMSprop(vdis.parameters(), lr=0.00005)
     # optimizer_G.load_state_dict(torch.load(f'checkpoints/{name}/optimizer_G_epoch_0.pt'))
-    # optimizer_D.load_state_dict(torch.load(f'checkpoints/{name}/optimizer_D_epoch_0.pt'))
+    # optimizer_D.load_state_dict(torch.load(f'checkpoints/{name}/optimizer_D_epoch_4.pt'))
     # unfreeze pgan disc
     # optimizer_D = optim.Adam(list(vdis.parameters()) + list(progan.netD.parameters()), lr=lr, betas=(beta1, 0.999))
 
     real_videos = RealVideos()
     dataloader = DataLoader(real_videos, batch_size=None, shuffle=True)
 
-    start_epoch = 0 # 1
+    start_epoch = 0
     epochs = 50
     batch_size = 1
 
@@ -103,6 +103,7 @@ if __name__ == "__main__":
         print(f'epoch: {epoch}')
         dis_loss, gen_loss = 0, 0
         total = 0
+        gen_total = 0
         dis_out_fakes, dis_out_reals = 0, 0
         acc_fakes, acc_reals = 0, 0
         #for iter, real_video in tqdm(enumerate(dataloader)):
@@ -120,9 +121,12 @@ if __name__ == "__main__":
             errD_real.backward()
             D_x = dis_real.mean().item()
 
-            # - fake input
-            noise = torch.rand([1, 2047]).tile(n_frames, 1).cuda()
-            input = fsg(noise, time) 
+            # - fake input 
+            if epoch == 0 or iter % (epoch*2) == 0:
+                input = torch.randn([1, 512]).tile(n_frames, 1).cuda()
+            else:
+                noise = torch.randn([1, 2047]).tile(n_frames, 1).cuda()
+                input = fsg(noise, time)
             fake_video = progan.avgG(input)
             _, fake_latent = progan.netD(fake_video.detach(), getFeature=True)   # (N, 512)
             fake_latent = fake_latent.unsqueeze(0)                               # (1, N, 512)
@@ -142,7 +146,9 @@ if __name__ == "__main__":
             acc_fakes += 1 if round(D_G_z1) == 0 else 0
             acc_reals += 1 if round(D_x) == 1 else 0
 
-            if epoch > 0:
+            if epoch == 0 or iter % (epoch*2) == 0:   # if epoch > 0:
+                errG = torch.Tensor([0])
+            else:
                 # update generator
                 optimizer_G.zero_grad()
                 _, fake_latent = progan.netD(fake_video, getFeature=True)   # (N, 512)
@@ -152,8 +158,7 @@ if __name__ == "__main__":
                 errG.backward()
                 D_G_z2 = dis_fake.mean().item()
                 optimizer_G.step()
-            else:
-                errG = torch.Tensor([0])
+                gen_total += 1
 
             dis_loss += errD.item()
             gen_loss += errG.item()
@@ -162,13 +167,16 @@ if __name__ == "__main__":
             if iter % 1000 == 0:
                 step = len(dataloader)*epoch+iter
                 log_writer.add_scalar('Discriminator loss', dis_loss/total, step)
-                log_writer.add_scalar('Generator loss', gen_loss/total, step)
+                if gen_total == 0:
+                    gen_total = 1
+                log_writer.add_scalar('Generator loss', gen_loss/gen_total, step)
                 log_writer.add_scalar('Discriminator output/fakes', dis_out_fakes/total, step)
                 log_writer.add_scalar('Discriminator output/reals', dis_out_reals/total, step)
                 log_writer.add_scalar('Accuracy/fakes', acc_fakes/total, step)
                 log_writer.add_scalar('Accuracy/reals', acc_reals/total, step)
                 dis_loss, gen_loss = 0, 0
                 total = 0
+                gen_total = 0
                 dis_out_fakes, dis_out_reals = 0, 0
                 acc_fakes, acc_reals = 0, 0
 
