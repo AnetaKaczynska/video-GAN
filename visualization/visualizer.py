@@ -1,30 +1,27 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-import visdom
+import random
+
+import numpy as np
 import torch
 import torchvision.transforms as Transforms
 import torchvision.utils as vutils
-import numpy as np
-import random
-
-# vis = visdom.Visdom()
+from torchvision.transforms import InterpolationMode
 
 
 def resizeTensor(data, out_size_image):
-
-    out_data_size = (data.size()[0], data.size()[
-                     1], out_size_image[0], out_size_image[1])
+    out_data_size = (data.shape[0], data.shape[1], out_size_image[0], out_size_image[1])
 
     outdata = torch.empty(out_data_size)
     data = torch.clamp(data, min=-1, max=1)
 
-    interpolationMode = 0
-    if out_size_image[0] < data.size()[0] and out_size_image[1] < data.size()[1]:
-        interpolationMode = 2
+    interpolationMode_ = InterpolationMode.NEAREST
+    if out_size_image[0] < data.shape[0] and out_size_image[1] < data.shape[1]:
+        interpolationMode_ = InterpolationMode.BILINEAR
 
     transform = Transforms.Compose([Transforms.Normalize((-1., -1., -1.), (2, 2, 2)),
                                     Transforms.ToPILImage(),
                                     Transforms.Resize(
-                                        out_size_image, interpolation=interpolationMode),
+                                        out_size_image, interpolation=interpolationMode_),
                                     Transforms.ToTensor()])
 
     for img in range(out_data_size[0]):
@@ -39,13 +36,12 @@ def publishTensors(data, out_size_image, caption="", window_token=None, env="mai
     return vis.images(outdata, opts=dict(caption=caption), win=window_token, env=env, nrow=nrow)
 
 
-def saveTensor(data, out_size_image, path):
+def saveTensor(data, out_size_image, path, nrow):
     outdata = resizeTensor(data, out_size_image)
-    vutils.save_image(outdata, path)
+    vutils.save_image(outdata, path, nrow=nrow)
 
 
 def publishLoss(data, name="", window_tokens=None, env="main"):
-
     if window_tokens is None:
         window_tokens = {key: None for key in data}
 
@@ -68,7 +64,6 @@ def publishLoss(data, name="", window_tokens=None, env="main"):
 
 
 def delete_env(name):
-
     vis.delete_env(name)
 
 
