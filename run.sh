@@ -14,7 +14,8 @@
 
 
 #datasets=/shared/results/Skopia/videos_8frames
-datasets=/shared/results/Skopia/videos24frames
+#datasets=/shared/results/Skopia/videos24frames
+datasets=/shared/results/Skopia/videos60frames
 checkpoints=/shared/results/z1143165/jelito3d_batchsize8
 dir_results=/shared/results/struski/videoGAN
 
@@ -23,8 +24,17 @@ mkdir -p $dir_results
 
 if [[ "$1" == "resume" ]]; then
 
-singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame24_iterD2_alphaSimil0_seed5018_220602-102758/checkpoints/frame_seed_generator.pt --num_samples 5 --batch_size 10
-singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame24_iterD2_alphaSimil0_seed5018_220602-102758/checkpoints/frame_seed_generator_maxSimilarity.pt --num_samples 5 --batch_size 10 --name "minLOSS"
+#singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame24_iterD2_alphaSimil0_proDISC_seed7504_220608-232620/checkpoints/frame_seed_generator.pt --num_samples 5 --batch_size 10 --n_frames 30 --name "extension_num_frames24-30"
+#singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame24_iterD2_alphaSimil0_proDISC_seed7504_220608-232620/checkpoints/frame_seed_generator.pt --num_samples 5 --batch_size 10 --n_frames 40 --name "extension_num_frames24-40"
+singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame60_duration24_iterD2_alphaSimil0_proDISC_seed9056_220610-151204/checkpoints/frame_seed_generator.pt --num_samples 10 --batch_size 5 --n_frames 60 --name "extension_num_frames60"
+singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame60_duration24_iterD2_alphaSimil0_proDISC_seed9056_220610-151204/checkpoints/frame_seed_generator.pt --num_samples 10 --batch_size 5 --n_frames 90 --name "extension_num_frames60-90"
+
+#singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame24_iterD2_alphaSimil0_seed1394_220606-151828/checkpoints/frame_seed_generator.pt --num_samples 5 --batch_size 10
+#singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame24_iterD2_alphaSimil0_proDISC_seed1895_220606-154132/checkpoints/frame_seed_generator.pt --num_samples 5 --batch_size 10
+
+#singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame24_iterD2_alphaSimil0_seed5018_220602-102758/checkpoints/frame_seed_generator.pt --num_samples 5 --batch_size 10
+#singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame24_iterD2_alphaSimil0_seed5018_220602-102758/checkpoints/frame_seed_generator_maxSimilarity.pt --num_samples 5 --batch_size 10 --name "minLOSS"
+
 #singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame24_iterD2_alphaSimil1_seed6878_220602-104237/checkpoints/frame_seed_generator.pt --num_samples 5 --batch_size 10
 #singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame24_iterD2_alphaSimil1_seed6878_220602-104237/checkpoints/frame_seed_generator_maxSimilarity.pt --num_samples 5 --batch_size 10 --name "minLOSS"
 #singularity exec --nv -B $datasets:/datasets -B $checkpoints:/checkpoints -B $dir_results:/results /shared/sets/singularity/miniconda_pytorch_py39.sif python training_create_movie.py --resume_path /results/clipping_frame24_iterD5_alphaSimil0_seed5114_220602-104144/checkpoints/frame_seed_generator.pt --num_samples 5 --batch_size 10

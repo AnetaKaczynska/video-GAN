@@ -45,23 +45,19 @@ def load_progan(name='jelito3d_batchsize8', checkPointDir='/checkpoints'):
     return model
 
 
-def clip_singular_value(A):
-    U, s, Vh = torch.linalg.svd(A, full_matrices=False)
-    s[s > 1] = 1
-    return U @ torch.diag(s) @ Vh
-
-
 if __name__ == "__main__":
 
     epochs = 50
     batch_size = 3  # 6, 3
     learning_rate = 5e-5
+    lr_proD = 5e-5  # 1e-5
     clamp_num = 0.01  # WGAN clip gradient
-    n_frames = 24  # 8, 24
+    n_frames, duration = 60, 24  # (8, 24, 60) x (8, 24, 24)
     size_img = 256  # 1024
     iter_logger = 250
     iterD = 2
-    alpha_similarity = 1  # 0, 0.2
+    alpha_similarity = 0  # 0, 0.2
+    frozen_proD = False  # True
 
     seed_ = randint(10, 10000)
     torch.manual_seed(seed_)
@@ -69,29 +65,34 @@ if __name__ == "__main__":
 
     date = datetime.now().strftime("%y%m%d-%H%M%S")
     root_results = f'/results/{Path(__file__).resolve().stem.removeprefix("training_")}' \
-                   f'_frame{n_frames}_iterD{iterD}_alphaSimil{alpha_similarity}_seed{seed_}_{date}'
+                   f'_frame{n_frames}_duration{duration}_iterD{iterD}_alphaSimil{alpha_similarity}' \
+                   f'{"" if frozen_proD else "_proDISC"}_seed{seed_}_{date}'
     print(f'\033[0;33m{root_results}\033[0m')
 
     log_writer = SummaryWriter(f'{root_results}/tensorboard')
     Path(f'{root_results}/fakes').mkdir(parents=True, exist_ok=True)
-    Path(f'{root_results}/reals').mkdir(parents=True, exist_ok=True)
+    # Path(f'{root_results}/reals').mkdir(parents=True, exist_ok=True)
     Path(f'{root_results}/checkpoints').mkdir(parents=True, exist_ok=True)
-
-    time = torch.arange(n_frames).tile(batch_size).unsqueeze(1).cuda()
 
     fsg = FrameSeedGenerator().cuda()
     progan = load_progan()
-    vdis = VideoDiscriminator(active=False, num_frame=n_frames).cuda()
+    vdis = VideoDiscriminator(active=False).cuda()
 
     optimizer_G = optim.RMSprop(fsg.parameters(), lr=learning_rate)
     optimizer_D = optim.RMSprop(vdis.parameters(), lr=learning_rate)
 
     kwargs = {"num_workers": 8, "pin_memory": True, "batch_size": batch_size,
               "shuffle": True, "drop_last": True}
-    dataloader = DataLoader(RealVideos(root='/datasets', num_frame=n_frames), **kwargs)
+    dataloader = DataLoader(RealVideos(root='/datasets', num_frame=n_frames, duration=duration), **kwargs)
 
-    progan.netD.eval()
     progan.avgG.eval()
+    if frozen_proD:
+        progan.netD.eval()
+        print('\033[0;32mFrozen proGAN Discriminator\033[0m')
+    else:
+        progan.netD.train()
+        optimizer_proD = optim.RMSprop(progan.netD.parameters(), lr=lr_proD)
+        print('\033[0;32mTrain proGAN Discriminator\033[0m')
 
     fsg.train()
     vdis.train()
@@ -105,8 +106,9 @@ if __name__ == "__main__":
         dis_out_fakes = dis_out_reals = 0
         acc_fakes = acc_reals = 0
 
-        for iter, real_video in tqdm(enumerate(dataloader), total=len(dataloader), leave=False):
+        for iter, (real_video, time) in tqdm(enumerate(dataloader), total=len(dataloader), leave=False):
             real_video = real_video.cuda()
+            time = time.float().cuda()
 
             #######################
             # Train discriminator #
@@ -118,11 +120,13 @@ if __name__ == "__main__":
                     parm.data.clamp_(-clamp_num, clamp_num)
 
                 optimizer_D.zero_grad()
+                if not frozen_proD:
+                    optimizer_proD.zero_grad()
 
                 # Pass real images through discriminator
                 _, real_latent = progan.netD(real_video.view(-1, *real_video.shape[-3:]), getFeature=True)
-                real_latent = real_latent.view(batch_size, n_frames, -1)  # (bs, N, 512)
-                real_preds = vdis(real_latent)  # (bs, 1)
+                real_latent = real_latent.view(batch_size, duration, -1)  # (bs, N, 512)
+                real_preds = vdis(real_latent, time)  # (bs, 1)
 
                 # modification: remove binary cross entropy
                 # real_targets = torch.ones(real_images.size(0), 1, device='cuda')
@@ -130,14 +134,14 @@ if __name__ == "__main__":
                 real_loss = -torch.mean(real_preds)
 
                 # Generate fake images
-                noise = torch.randn([batch_size, 2047]).unsqueeze(1).tile(1, n_frames, 1).view(-1, 2047).cuda()
-                latent = fsg(noise, time)
+                noise = torch.randn([batch_size, 2047]).unsqueeze(1).tile(1, duration, 1).view(-1, 2047).cuda()
+                latent = fsg(noise, time.view(-1, 1))
                 fake_video = progan.avgG(latent).detach()
 
                 # Pass fake images through discriminator
                 _, fake_latent = progan.netD(fake_video, getFeature=True)  # (bs * N, 512)
-                fake_latent = fake_latent.view(batch_size, n_frames, -1)  # (bs, N, 512)
-                fake_preds = vdis(fake_latent)  # (bs, 1)
+                fake_latent = fake_latent.view(batch_size, duration, -1)  # (bs, N, 512)
+                fake_preds = vdis(fake_latent, time)  # (bs, 1)
 
                 # modification: remove binary cross entropy
                 # fake_targets = torch.zeros(fake_images.size(0), 1, device='cuda')
@@ -148,6 +152,9 @@ if __name__ == "__main__":
                 loss_D = real_loss + fake_loss
                 loss_D.backward()
                 optimizer_D.step()
+
+                if not frozen_proD:
+                    optimizer_proD.step()
 
             dis_out_fakes += torch.mean(fake_preds).item()
             dis_out_reals += torch.mean(real_preds).item()
@@ -161,21 +168,21 @@ if __name__ == "__main__":
             optimizer_G.zero_grad()
 
             # Generate fake images
-            noise = torch.randn([batch_size, 2047]).unsqueeze(1).tile(1, n_frames, 1).view(-1, 2047).cuda()
-            latent = fsg(noise, time)
+            noise = torch.randn([batch_size, 2047]).unsqueeze(1).tile(1, duration, 1).view(-1, 2047).cuda()
+            latent = fsg(noise, time.view(-1, 1))
             fake_video = progan.avgG(latent)
 
             # Try to fool the discriminator
             _, fake_latent = progan.netD(fake_video, getFeature=True)  # (bs * N, 512)
-            fake_latent = fake_latent.view(batch_size, n_frames, -1)  # (bs, N, 512)
-            preds = vdis(fake_latent)  # (bs, 1)
+            fake_latent = fake_latent.view(batch_size, duration, -1)  # (bs, N, 512)
+            preds = vdis(fake_latent, time)  # (bs, 1)
 
             # modificationL remove binary cross entropy
             # targets = torch.ones(batch_size, 1, device='cuda')
             # real_loss = F.binary_cross_entropy(preds, targets)
             loss_G = -torch.mean(preds)
 
-            latent = latent.view(batch_size, n_frames, -1)
+            latent = latent.view(batch_size, duration, -1)
             loss_similarity = torch.norm(torch.roll(latent, shifts=-1, dims=1)[:, :-1, :] - latent[:, :-1, :],
                                          p=2, dim=-1).neg().exp().mean()
 
@@ -209,19 +216,21 @@ if __name__ == "__main__":
                 log_writer.add_scalar('Accuracy/reals', acc_reals / total, step)
 
                 fake_video = fake_video.detach().cpu()
-                saveTensor(fake_video, (size_img, size_img), f'{root_results}/fakes/{epoch}_{iter}.jpg', n_frames)
+                saveTensor(fake_video, (size_img, size_img), f'{root_results}/fakes/{epoch}_{iter}.jpg', duration)
 
-                real_video = real_video.reshape(-1, *real_video.shape[-3:])
-                real_video = real_video.detach().cpu()
-                saveTensor(real_video, (size_img, size_img), f'{root_results}/reals/{epoch}_{iter}.jpg', n_frames)
+                # real_video = real_video.reshape(-1, *real_video.shape[-3:])
+                # real_video = real_video.detach().cpu()
+                # saveTensor(real_video, (size_img, size_img), f'{root_results}/reals/{epoch}_{iter}.jpg', duration)
 
                 if min_gen_similarity > gen_similarity:
                     min_gen_similarity = gen_similarity
-                    torch.save(fsg.state_dict(), f'{root_results}/checkpoints/frame_seed_generator_maxSimilarity.pt')
+                    torch.save({'model_state_dict': fsg.state_dict(), 'epoch': epoch, 'iter': iter},
+                               f'{root_results}/checkpoints/frame_seed_generator_maxSimilarity.pt')
 
                 dis_loss = gen_loss = gen_similarity = total = 0
                 dis_out_fakes = dis_out_reals = 0
                 acc_fakes = acc_reals = 0
 
-        torch.save(fsg.state_dict(), f'{root_results}/checkpoints/frame_seed_generator.pt')
-        torch.save(vdis.state_dict(), f'{root_results}/checkpoints/video_discriminator.pt')
+        torch.save({'model_state_dict': fsg.state_dict(), 'epoch': epoch},
+                   f'{root_results}/checkpoints/frame_seed_generator.pt')
+        # torch.save(vdis.state_dict(), f'{root_results}/checkpoints/video_discriminator.pt')

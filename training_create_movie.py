@@ -40,7 +40,7 @@ if __name__ == "__main__":
     parser.add_argument("--size_img", type=int, default=256)
     parser.add_argument("--num_samples", type=int, default=2)
     parser.add_argument("--resume_path", type=str, required=True)
-    parser.add_argument("--name", type=str, default='')
+    parser.add_argument("--name", type=str, default='movies')
     args = parser.parse_args()
     print(args)
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     torch.manual_seed(seed_)
     torch.cuda.manual_seed(seed_)
 
-    save_results = f'{str(Path(args.resume_path).parents[1])}/{Path(__file__).resolve().stem.removeprefix("training_")}{args.name}'
+    save_results = f'{str(Path(args.resume_path).parents[1])}/{args.name}'
     print(f'\033[0;33m{save_results}\033[0m')
 
     Path(save_results).mkdir(parents=True, exist_ok=True)
@@ -61,7 +61,13 @@ if __name__ == "__main__":
     proganG.eval()
 
     fsg = FrameSeedGenerator().cuda()
-    fsg.load_state_dict(torch.load(args.resume_path))
+    checkpoint = torch.load(args.resume_path)
+    if type(checkpoint) is dict:
+        fsg.load_state_dict(checkpoint.pop('model_state_dict'))
+        for key, value in checkpoint.items():
+            print(f'\033[0;34m{key}: {value}\033[0m')
+    else:
+        fsg.load_state_dict(checkpoint)
     fsg.eval()
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
