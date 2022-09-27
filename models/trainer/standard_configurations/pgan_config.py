@@ -5,8 +5,9 @@ from ...utils.config import BaseConfig
 _C = BaseConfig()
 
 # Maximum number of iteration at each scale
-_C.maxIterAtScale = [48000, 96000, 96000,
+_C.maxIterAtScale = [48000, 96000, 96000, 
                      96000, 96000, 96000, 96000, 96000, 200000]
+# _C.maxIterAtScale = [96000, 200000, 200000, 200000, 200000, 200000, 200000, 200000, 400000]
 
 # Blending mode.
 
@@ -45,7 +46,7 @@ _C.alphaSizeJumps = [0, 32, 32, 32, 32, 32, 32, 32, 32, 32]
 _C.depthScales = [512, 512, 512, 512, 256, 128, 64, 32, 16]
 
 # Mini batch size
-_C.miniBatchSize = 4 # 8 # 16
+_C.miniBatchSize = 16
 
 # Dimension of the latent vector
 _C.dimLatentVector = 512
@@ -86,3 +87,9 @@ _C.attribKeysOrder = None
 
 #Activate GDPP loss ?
 _C.GDPP = False
+
+# We are doing an alternative training. Number of consecutive updates of G
+_C.kInnerG = 1
+
+# We are doing an alternative training. Number of consecutive updates of D
+_C.kInnerD = 2

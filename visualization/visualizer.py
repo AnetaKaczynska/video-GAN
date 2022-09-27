@@ -68,7 +68,6 @@ def publishLoss(data, name="", window_tokens=None, env="main"):
 
 
 def delete_env(name):
-
     vis.delete_env(name)
 
 

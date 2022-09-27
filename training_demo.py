@@ -18,8 +18,8 @@ from visualization.visualizer import saveTensor
 # torch.autograd.set_detect_anomaly(True)
 
 
-def load_progan(name='jelito3d_batchsize8', checkPointDir='output_networks/jelito3d_batchsize8'):
-    checkpointData = getLastCheckPoint(checkPointDir, name, scale=None, iter=None)
+def load_progan(name='jelito3d_batchsize8', checkPointDir='output_networks/jelito3d_batchsize8', scale=None):
+    checkpointData = getLastCheckPoint(checkPointDir, name, scale=scale, iter=None)
     modelConfig, pathModel, _ = checkpointData
     _, scale, _ = parse_state_name(pathModel)
 
@@ -58,14 +58,14 @@ def clip_singular_value(A):
 if __name__ == "__main__":
     now = datetime.now()
     date = now.strftime("%Y.%m.%d_%H.%M.%S")
-    name = f'{date}_gradual_pretraining'
+    name = '2022.06.05_15.50.27_gradual_pretraining'   # f'{date}_gradual_pretraining'
     log_writer = SummaryWriter(f'runs/{name}')
-    os.mkdir(f'fakes/{name}')
+    # os.mkdir(f'fakes/{name}')
     # os.mkdir(f'reals/{name}')
-    os.mkdir(f'checkpoints/{name}')
+    # os.mkdir(f'checkpoints/{name}')
 
     fsg = FrameSeedGenerator()
-    # fsg.load_state_dict(torch.load(f'checkpoints/{name}/frame_seed_generator_epoch_0.pt'))
+    fsg.load_state_dict(torch.load(f'checkpoints/{name}/frame_seed_generator_epoch_49.pt'))
     fsg.cuda()
     n_frames = 8
     time = torch.arange(n_frames).unsqueeze(1).cuda()
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     progan = load_progan()
 
     vdis = VideoDiscriminator(True)
-    # vdis.load_state_dict(torch.load(f'checkpoints/{name}/video_discriminator_epoch_4.pt'))
+    vdis.load_state_dict(torch.load(f'checkpoints/{name}/video_discriminator_epoch_49.pt'))
     vdis.cuda()
 
     criterion = nn.BCELoss()
@@ -81,16 +81,16 @@ if __name__ == "__main__":
     beta1 = 0.5
     optimizer_G = optim.Adam(fsg.parameters(), lr=lr, betas=(beta1, 0.999))   # RMSprop(fsg.parameters(), lr=0.00005)
     optimizer_D = optim.Adam(vdis.parameters(), lr=lr, betas=(beta1, 0.999))   # RMSprop(vdis.parameters(), lr=0.00005)
-    # optimizer_G.load_state_dict(torch.load(f'checkpoints/{name}/optimizer_G_epoch_0.pt'))
-    # optimizer_D.load_state_dict(torch.load(f'checkpoints/{name}/optimizer_D_epoch_4.pt'))
+    optimizer_G.load_state_dict(torch.load(f'checkpoints/{name}/optimizer_G_epoch_49.pt'))
+    optimizer_D.load_state_dict(torch.load(f'checkpoints/{name}/optimizer_D_epoch_49.pt'))
     # unfreeze pgan disc
     # optimizer_D = optim.Adam(list(vdis.parameters()) + list(progan.netD.parameters()), lr=lr, betas=(beta1, 0.999))
 
     real_videos = RealVideos()
     dataloader = DataLoader(real_videos, batch_size=None, shuffle=True)
 
-    start_epoch = 0
-    epochs = 50
+    start_epoch = 50
+    epochs = 100
     batch_size = 1
 
     fsg.train()

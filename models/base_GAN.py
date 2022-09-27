@@ -173,56 +173,57 @@ class BaseGAN():
 
         n_samples = self.real_input.size()[0]
 
-        # Update the discriminator
-        self.optimizerD.zero_grad()
+        for i in range(2):
+            # Update the discriminator
+            self.optimizerD.zero_grad()
 
-        # #1 Real data
-        predRealD = self.netD(self.real_input, False)
+            # #1 Real data
+            predRealD = self.netD(self.real_input, False)
 
-        # Classification criterion
-        allLosses["lossD_classif"] = \
-            self.classificationPenalty(predRealD,
-                                       self.realLabels,
-                                       self.config.weightConditionD,
-                                       backward=True)
-
-        lossD = self.lossCriterion.getCriterion(predRealD, True)
-        allLosses["lossD_real"] = lossD.item()
-
-        # #2 Fake data
-        inputLatent, targetRandCat = self.buildNoiseData(n_samples)
-        predFakeG = self.netG(inputLatent).detach()
-        predFakeD = self.netD(predFakeG, False)
-
-        lossDFake = self.lossCriterion.getCriterion(predFakeD, False)
-        allLosses["lossD_fake"] = lossDFake.item()
-        lossD += lossDFake
-
-        # #3 WGANGP gradient loss
-        if self.config.lambdaGP > 0:
-            allLosses["lossD_Grad"] = WGANGPGradientPenalty(self.real_input,
-                                                            predFakeG,
-                                                            self.netD,
-                                                            self.config.lambdaGP,
-                                                            backward=True)
-
-        # #4 Epsilon loss
-        if self.config.epsilonD > 0:
-            lossEpsilon = (predRealD[:, 0] ** 2).sum() * self.config.epsilonD
-            lossD += lossEpsilon
-            allLosses["lossD_Epsilon"] = lossEpsilon.item()
-
-
-        # # 5 Logistic gradient loss
-        if self.config.logisticGradReal > 0:
-            allLosses["lossD_logistic"] = \
-                logisticGradientPenalty(self.real_input, self.netD,
-                                        self.config.logisticGradReal,
+            # Classification criterion
+            allLosses["lossD_classif"] = \
+                self.classificationPenalty(predRealD,
+                                        self.realLabels,
+                                        self.config.weightConditionD,
                                         backward=True)
 
-        lossD.backward(retain_graph=True)
-        finiteCheck(self.getOriginalD().parameters())
-        self.optimizerD.step()
+            lossD = self.lossCriterion.getCriterion(predRealD, True)
+            allLosses["lossD_real"] = lossD.item()
+
+            # #2 Fake data
+            inputLatent, targetRandCat = self.buildNoiseData(n_samples)
+            predFakeG = self.netG(inputLatent).detach()
+            predFakeD = self.netD(predFakeG, False)
+
+            lossDFake = self.lossCriterion.getCriterion(predFakeD, False)
+            allLosses["lossD_fake"] = lossDFake.item()
+            lossD += lossDFake
+
+            # #3 WGANGP gradient loss
+            if self.config.lambdaGP > 0:
+                allLosses["lossD_Grad"] = WGANGPGradientPenalty(self.real_input,
+                                                                predFakeG,
+                                                                self.netD,
+                                                                self.config.lambdaGP,
+                                                                backward=True)
+
+            # #4 Epsilon loss
+            if self.config.epsilonD > 0:
+                lossEpsilon = (predRealD[:, 0] ** 2).sum() * self.config.epsilonD
+                lossD += lossEpsilon
+                allLosses["lossD_Epsilon"] = lossEpsilon.item()
+
+
+            # # 5 Logistic gradient loss
+            if self.config.logisticGradReal > 0:
+                allLosses["lossD_logistic"] = \
+                    logisticGradientPenalty(self.real_input, self.netD,
+                                            self.config.logisticGradReal,
+                                            backward=True)
+
+            lossD.backward(retain_graph=True)
+            finiteCheck(self.getOriginalD().parameters())
+            self.optimizerD.step()
 
         # Logs
         lossD = 0

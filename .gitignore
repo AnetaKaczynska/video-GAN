@@ -1,6 +1,7 @@
 output_networks/*
 checkpoints/*
-fakes/*
+fakes*
+projections/*
 reals/*
 runs/*
 *.pyc
