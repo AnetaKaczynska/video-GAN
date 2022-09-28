@@ -16,7 +16,7 @@ if __name__ == "__main__":
     name = f'{date}_projection'
     log_writer = SummaryWriter(f'runs/{name}')
 
-    progan = load_progan(scale=6)
+    progan = load_progan(name='videos_24frames', checkPointDir='output_networks/videos_24frames', scale=5)
 
     iters = 800
     w_opt = torch.randn([1, 512], requires_grad=True, device='cuda')   # .cuda()
@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
             if iter%50 == 0:
                 images_comp = torch.cat([target_image.cpu(), fake_image.cpu()])
-                saveTensor(images_comp, (256, 256), f'projections/aaa/{image_name[0]}_{iter}.jpg')
+                saveTensor(images_comp, (256, 256), f'projections/videos_24frames/{image_name[0][:11]}/{image_name[0]}_{iter}.jpg')
 
 
 
