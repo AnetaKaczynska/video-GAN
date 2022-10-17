@@ -144,6 +144,9 @@ def test(parser, visualisation=None):
     outputDatasetPath = getVal(kwargs, "output_dataset", None)
     if outputDatasetPath is not None:
         print("Exporting a fake dataset at path " + outputDatasetPath)
-        visualizer.exportDB(outputDatasetPath, kwargs["size_dataset"])
+        if kwargs["label"] is None:
+            visualizer.exportDB(outputDatasetPath, kwargs["size_dataset"])
+        else:
+            visualizer.exportDB(outputDatasetPath, kwargs["size_dataset"], kwargs["label"])
 
     visualizer.plotLosses(pathLoss, name)

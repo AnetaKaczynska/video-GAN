@@ -6,7 +6,10 @@ import torchvision.utils as vutils
 import numpy as np
 import random
 
-# vis = visdom.Visdom()
+
+def init(port):
+    global vis
+    vis = visdom.Visdom(port=port)
 
 
 def resizeTensor(data, out_size_image):
@@ -21,10 +24,19 @@ def resizeTensor(data, out_size_image):
     if out_size_image[0] < data.size()[0] and out_size_image[1] < data.size()[1]:
         interpolationMode = 2
 
+    modes_mapping = {
+        0: Transforms.InterpolationMode.NEAREST,
+        1: Transforms.InterpolationMode.LANCZOS,
+        2: Transforms.InterpolationMode.BILINEAR,
+        3: Transforms.InterpolationMode.BICUBIC,
+        4: Transforms.InterpolationMode.BOX,
+        5: Transforms.InterpolationMode.HAMMING,
+    }
+
     transform = Transforms.Compose([Transforms.Normalize((-1., -1., -1.), (2, 2, 2)),
                                     Transforms.ToPILImage(),
                                     Transforms.Resize(
-                                        out_size_image, interpolation=interpolationMode),
+                                        out_size_image, interpolation=modes_mapping[interpolationMode]),
                                     Transforms.ToTensor()])
 
     for img in range(out_data_size[0]):

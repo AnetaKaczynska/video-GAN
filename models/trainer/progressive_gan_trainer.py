@@ -1,11 +1,13 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import os
 
+import torch.nn.functional as F
+from tqdm import tqdm
+
+from .gan_trainer import GANTrainer
 from .standard_configurations.pgan_config import _C
 from ..progressive_gan import ProgressiveGAN
-from .gan_trainer import GANTrainer
 from ..utils.utils import getMinOccurence
-import torch.nn.functional as F
 
 
 class ProgressiveGANTrainer(GANTrainer):
@@ -87,7 +89,6 @@ class ProgressiveGANTrainer(GANTrainer):
                 'custom', 'linear'")
 
         if self.modelConfig.alphaJumpMode == "linear":
-
             self.modelConfig.alphaNJumps[0] = 0
             self.modelConfig.iterAlphaJump = []
             self.modelConfig.alphaJumpVals = []
@@ -148,7 +149,6 @@ class ProgressiveGANTrainer(GANTrainer):
             currIter = 0
 
             while currVal > 0:
-
                 self.modelConfig.iterAlphaJump[-1].append(currIter)
                 self.modelConfig.alphaJumpVals[-1].append(currVal)
 
@@ -172,7 +172,7 @@ class ProgressiveGANTrainer(GANTrainer):
                 low_res_real, scale_factor=2, mode='nearest')
 
             alpha = self.model.config.alpha
-            input_real = alpha * low_res_real + (1-alpha) * input_real
+            input_real = alpha * low_res_real + (1 - alpha) * input_real
 
         return input_real
 
@@ -229,20 +229,28 @@ class ProgressiveGANTrainer(GANTrainer):
                     self.modelConfig.iterAlphaJump[scale][shiftAlpha] < shiftIter:
                 shiftAlpha += 1
 
-            while shiftIter < self.modelConfig.maxIterAtScale[scale]:
+            with tqdm(total=self.modelConfig.maxIterAtScale[scale]) as pbar:
+                while shiftIter < self.modelConfig.maxIterAtScale[scale]:
 
-                self.indexJumpAlpha = shiftAlpha
-                status = self.trainOnEpoch(dbLoader, scale,
-                                           shiftIter=shiftIter,
-                                           maxIter=self.modelConfig.maxIterAtScale[scale])
+                    # if shiftIter % 1000:  # todo: remove LS
+                    #     shiftIter += sizeDB
+                    #     pbar.update(sizeDB)
+                    #     continue
 
-                if not status:
-                    return False
+                    self.indexJumpAlpha = shiftAlpha
+                    status = self.trainOnEpoch(dbLoader, scale,
+                                               shiftIter=shiftIter,
+                                               maxIter=self.modelConfig.maxIterAtScale[scale])
 
-                shiftIter += sizeDB
-                while shiftAlpha < len(self.modelConfig.iterAlphaJump[scale]) and \
-                        self.modelConfig.iterAlphaJump[scale][shiftAlpha] < shiftIter:
-                    shiftAlpha += 1
+                    if not status:
+                        return False
+
+                    shiftIter += sizeDB
+                    while shiftAlpha < len(self.modelConfig.iterAlphaJump[scale]) and \
+                            self.modelConfig.iterAlphaJump[scale][shiftAlpha] < shiftIter:
+                        shiftAlpha += 1
+
+                    pbar.update(sizeDB)
 
             # Save a checkpoint
             if self.checkPointDir is not None:
@@ -269,17 +277,17 @@ class ProgressiveGANTrainer(GANTrainer):
 
         if configNewScales["alphaJumpMode"] == 'custom':
             self.modelConfig.iterAlphaJump = self.modelConfig.iterAlphaJump + \
-                configNewScales["iterAlphaJump"]
+                                             configNewScales["iterAlphaJump"]
             self.modelConfig.alphaJumpVals = self.modelConfig.alphaJumpVals + \
-                configNewScales["alphaJumpVals"]
+                                             configNewScales["alphaJumpVals"]
 
         else:
             self.updateAlphaJumps(configNewScales["alphaNJumps"],
                                   configNewScales["alphaSizeJumps"])
 
         self.modelConfig.depthScales = self.modelConfig.depthScales + \
-            configNewScales["depthScales"]
+                                       configNewScales["depthScales"]
         self.modelConfig.maxIterAtScale = self.modelConfig.maxIterAtScale + \
-            configNewScales["maxIterAtScale"]
+                                          configNewScales["maxIterAtScale"]
 
         self.scaleSanityCheck()

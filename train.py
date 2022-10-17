@@ -20,9 +20,7 @@ def getTrainer(name):
     if name not in match:
         raise AttributeError("Invalid module name")
 
-    return loadmodule("models.trainer." + match[name][0],
-                      match[name][1],
-                      prefix='')
+    return loadmodule("models.trainer." + match[name][0], match[name][1], prefix='')
 
 
 if __name__ == "__main__":
@@ -57,6 +55,7 @@ if __name__ == "__main__":
                         on")
     parser.add_argument('-v', '--partitionValue', help="Partition's value",
                         type=str, dest="partition_value")
+    parser.add_argument('--visdom_port', type=int, default=8097)
 
     # Retrieve the model we want to launch
     baseArgs, unknown = parser.parse_known_args()
@@ -108,6 +107,7 @@ if __name__ == "__main__":
         print("Visualization disabled")
     else:
         vis_module = importlib.import_module("visualization.visualizer")
+        vis_module.init(baseArgs.visdom_port)
 
     print("Running " + baseArgs.model_name)
 
@@ -123,7 +123,7 @@ if __name__ == "__main__":
                                visualisation=vis_module,
                                lossIterEvaluation=kwargs["evalIter"],
                                checkPointDir=checkPointDir,
-                               saveIter= kwargs["saveIter"],
+                               saveIter=kwargs["saveIter"],
                                modelLabel=modelLabel,
                                partitionValue=partitionValue,
                                **trainingConfig)
@@ -135,3 +135,4 @@ if __name__ == "__main__":
         GANTrainer.loadSavedTraining(pathModel, trainConfig, pathTmpData)
 
     GANTrainer.train()
+    print("\033[0;1;33mDone train model :)\033[0m")

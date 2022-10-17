@@ -122,7 +122,7 @@ class GANVisualizer():
             self.visualizer.saveTensor(
                 toSave, (toSave.size()[2], toSave.size()[3]), pathShape)
 
-    def exportDB(self, path, nItems):
+    def exportDB(self, path, nItems, inputLabels=None):
         r"""
         Save dataset of fake generations
 
@@ -142,12 +142,15 @@ class GANVisualizer():
 
         while remaining > 0:
             currBatch = min(remaining, maxBatchSize)
-            noiseData, _ = self.model.buildNoiseData(currBatch)
+            if inputLabels is None:
+                noiseData, _ = self.model.buildNoiseData(currBatch)
+            else:
+                labels = torch.full((currBatch, 1), inputLabels, device=self.model.device)
+                noiseData, _ = self.model.buildNoiseData(currBatch, labels)
             img = self.model.test(noiseData, getAvG=True, toCPU=True)
 
             for i in range(currBatch):
                 imgPath = os.path.join(path, "gen_" + str(index) + ".jpg")
-                print('\n\n\n', size, '\n\n\n')
                 self.visualizer.saveTensor(img[i].view(1, 3, size[0], size[1]),
                                            size, imgPath)
                 index += 1

@@ -275,7 +275,8 @@ class BaseGAN():
         # Update the moving average if relevant
         for p, avg_p in zip(self.getOriginalG().parameters(),
                             self.getOriginalAvgG().parameters()):
-            avg_p.mul_(0.999).add_(0.001, p.data)
+            # avg_p.mul_(0.999).add_(0.001, p.data)
+            avg_p.mul_(0.999).add_(p.data, alpha=0.001)
 
         return allLosses
 

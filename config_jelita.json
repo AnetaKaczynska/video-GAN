@@ -1,0 +1,20 @@
+{
+  "pathDB": "/datasets/images_train_2",
+  "config": {
+    "maxIterAtScale": [
+      48000,
+      96000,
+      96000,
+      96000,
+      96000,
+      96000,
+      96000
+    ]
+  },
+  "imagefolderDataset": true,
+  "balance_batch": true,
+  "frequency_distribution": {
+    "None": 0.8,
+    "polip": 0.2
+  }
+}

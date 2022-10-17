@@ -32,6 +32,8 @@ if __name__ == "__main__":
                         type=str, dest="partition_value")
     parser.add_argument("-A", "--statsFile", dest="statsFile",
                         type=str, help="Path to the statistics file")
+    parser.add_argument('--visdom_port', type=int, default=8097)
+    parser.add_argument('--label', type=int, default=None)
 
     if len(sys.argv) > 1 and sys.argv[1] in ['-h', '--help']:
         parser.print_help()
@@ -46,6 +48,7 @@ if __name__ == "__main__":
         print("Visualization disabled")
     else:
         vis_module = importlib.import_module("visualization.visualizer")
+        vis_module.init(args.visdom_port)
 
     module = importlib.import_module("models.eval." + args.evaluation_name)
     print("Running " + args.evaluation_name)

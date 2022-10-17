@@ -1,18 +1,21 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-import os
 import json
+import os
 import pickle as pkl
 
+import numpy as np
 import torch
 import torchvision.transforms as Transforms
+from torch.utils.data import WeightedRandomSampler
+from torchvision.transforms import RandomRotation, RandomHorizontalFlip, RandomVerticalFlip
 
-from ..utils.config import getConfigFromDict, getDictFromConfig, BaseConfig
-from ..utils.image_transform import NumpyResize, NumpyToTensor
 from ..datasets.attrib_dataset import AttribDataset
 from ..datasets.hd5 import H5Dataset
+from ..utils.config import getConfigFromDict, getDictFromConfig, BaseConfig
+from ..utils.image_transform import NumpyResize, NumpyToTensor
 
 
-class GANTrainer():
+class GANTrainer:
     r"""
     A class managing a progressive GAN training. Logs, chekpoints,
     visualization, and number iterations are managed here.
@@ -32,7 +35,9 @@ class GANTrainer():
                  imagefolderDataset=False,
                  ignoreAttribs=False,
                  pathPartition=None,
-                 partitionValue=None):
+                 partitionValue=None,
+                 balance_batch=False,
+                 frequency_distribution: dict = None):
         r"""
         Args:
             - pathdb (string): path to the directorty containing the image
@@ -87,6 +92,8 @@ class GANTrainer():
         self.selectedAttributes = selectedAttributes
         self.imagefolderDataset = imagefolderDataset
         self.modelConfig.attribKeysOrder = None
+        self.balance_batch = balance_batch
+        self.frequency_distribution = frequency_distribution
 
         if (not ignoreAttribs) and \
                 (self.pathAttribDict is not None or self.imagefolderDataset):
@@ -125,7 +132,6 @@ class GANTrainer():
         self.saveIter = saveIter
         self.pathLossLog = None
 
-
         if self.checkPointDir is not None:
             self.pathLossLog = os.path.abspath(os.path.join(self.checkPointDir,
                                                             self.modelLabel
@@ -150,8 +156,8 @@ class GANTrainer():
             if name not in self.runningLoss:
                 self.runningLoss[name] = [0, 0]
 
-            self.runningLoss[name][0]+= value
-            self.runningLoss[name][1]+=1
+            self.runningLoss[name][0] += value
+            self.runningLoss[name][1] += 1
 
     def resetRunningLosses(self):
 
@@ -173,7 +179,7 @@ class GANTrainer():
                 self.lossProfile[-1][item] = [None for x in range(nPrevIter)]
 
             value, stack = self.runningLoss[item]
-            self.lossProfile[-1][item].append(value /float(stack))
+            self.lossProfile[-1][item].append(value / float(stack))
 
         for item in toComplete:
             if item in ["scale", "iter"]:
@@ -293,7 +299,6 @@ class GANTrainer():
 
         if "alphaJumpMode" in outConfig:
             if outConfig["alphaJumpMode"] == "linear":
-
                 outConfig.pop("iterAlphaJump", None)
                 outConfig.pop("alphaJumpVals", None)
 
@@ -403,9 +408,36 @@ class GANTrainer():
             A dataset with properly resized inputs.
         """
         dataset = self.getDataset(scale)
-        return torch.utils.data.DataLoader(dataset,
-                                           batch_size=self.modelConfig.miniBatchSize,
-                                           shuffle=True, num_workers=self.model.n_devices)
+        if dataset.stats is not None and self.balance_batch:  # todo: add [LS]
+            if self.frequency_distribution is None:
+                print(f"\033[0;33mBalancing the batch [Counter class: {dataset.stats['Main']}]\033[0m")
+                weights = {i: (name_dir, 1 / class_count) for i, (name_dir, class_count) in
+                           enumerate(dataset.stats['Main'].items())}
+            else:
+                print(f"\033[0;33mBalancing the batch in proportion: {self.frequency_distribution}"
+                      f" [Counter class: {dataset.stats['Main']}]\033[0m")
+                weights = {i: (name_dir, self.frequency_distribution[name_dir] / class_count) for
+                           i, (name_dir, class_count) in enumerate(dataset.stats['Main'].items())}
+
+            samples_weights = np.zeros(len(dataset))
+            for idx in range(len(dataset)):
+                imgName = dataset.getName(idx)
+
+                if dataset.hasAttrib:
+                    attribVals = dataset.attribDict[imgName]
+                    assert len(attribVals) == 1
+                    for key, val in attribVals.items():
+                        assert imgName.startswith(weights[dataset.shiftAttribVal[key][val]][0])
+                        samples_weights[idx] = weights[dataset.shiftAttribVal[key][val]][1]
+
+            shuffle = None
+            sampler = WeightedRandomSampler(samples_weights, len(samples_weights))
+        else:
+            shuffle = True
+            sampler = None
+
+        return torch.utils.data.DataLoader(dataset, batch_size=self.modelConfig.miniBatchSize, shuffle=shuffle,
+                                           sampler=sampler, num_workers=self.model.n_devices)
 
     def getDataset(self, scale, size=None):
 
@@ -417,6 +449,9 @@ class GANTrainer():
         print("size", size)
         transformList = [NumpyResize(size),
                          NumpyToTensor(),
+                         RandomHorizontalFlip(p=0.2),  # todo: LS
+                         RandomVerticalFlip(p=0.2),  # todo: LS
+                         # RandomRotation(90),  # todo: LS
                          Transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
 
         if self.modelConfig.dimOutput == 1:
@@ -466,7 +501,6 @@ class GANTrainer():
         """
 
         i = shiftIter
-
         for item, data in enumerate(dbLoader, 0):
 
             inputs_real = data[0]
@@ -497,8 +531,8 @@ class GANTrainer():
                 self.updateLossProfile(i)
 
                 print('[%d : %6d] loss G : %.3f loss D : %.3f' % (scale, i,
-                      self.lossProfile[-1]["lossG"][-1],
-                      self.lossProfile[-1]["lossD"][-1]))
+                                                                  self.lossProfile[-1]["lossG"][-1],
+                                                                  self.lossProfile[-1]["lossD"][-1]))
 
                 self.resetRunningLosses()
 
