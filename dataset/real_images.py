@@ -10,15 +10,15 @@ from torch.utils.data import Dataset
 
 class RealImages(Dataset):
     def __init__(self):
-        self.image_dir = '/shared/results/Skopia/images'
-        self.h, self.w = 1024, 1024
+        self.image_dir = '/shared/results/Skopia/videos_24frames'   # images'
+        self.h, self.w = 256, 256   # 1024, 1024
         self.image_names = self._load_images()
 
     def _load_images(self):
         images = os.listdir(self.image_dir)
-        image_name = re.compile('([0-9]+_[0-9]+).jpg')
+        image_name = re.compile('([0-9]+_[0-9]+_[0-9]+).jpg')   # ([0-9]+_[0-9]+).jpg')
         image_names = {image_name.search(image).groups()[0] for image in images}
-        return list(image_names)
+        return list(sorted(image_names))
 
     def __len__(self):
         return len(self.image_names)
@@ -28,12 +28,12 @@ class RealImages(Dataset):
 
         image_path = self.image_dir + f'/{image_name}.jpg'
         image = Image.open(image_path).convert('RGB')
-        image = image.resize((self.h, self.w), Image.LANCZOS)
+        # image = image.resize((self.h, self.w), Image.LANCZOS)
         image = np.asarray(image, dtype=np.float32).transpose(2, 0, 1)
 
         image -= 127.5
         image /= 127.5
-        return image_name, torch.as_tensor(image)
+        return torch.as_tensor(image)  # image_name, torch.as_tensor(image)
 
 
 if __name__ == '__main__':
