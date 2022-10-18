@@ -1,0 +1,24 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Find noise for images",
+            "type": "python",
+            "request": "launch",
+            "module": "adversarial",
+            "justMyCode": false,
+            "args": [
+                "--model-path", "/shared/results/z1143165/polipy",
+                "--model-name", "polipy",
+                "--images-path", "/shared/results/Skopia/images_split2classes/polip",
+                "--output-dir", "POLIPY",
+                "--n-batches", "10",
+                "--lr", "2.0",
+                "--num-iters", "300",
+            ]
+        }
+    ]
+}
