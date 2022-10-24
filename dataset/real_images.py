@@ -24,7 +24,7 @@ class RealImages(Dataset):
         img -= 127.5
         img /= 127.5
         img = torch.as_tensor(img)
-        return img
+        return img, str(img_path)
 
 
 if __name__ == '__main__':

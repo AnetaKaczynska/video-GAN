@@ -11,11 +11,10 @@
             "module": "adversarial",
             "justMyCode": false,
             "args": [
-                "--model-path", "/shared/results/z1143165/polipy",
-                "--model-name", "polipy",
-                "--images-path", "/shared/results/Skopia/images_split2classes/polip",
+                "--model-path", "/shared/results/struski/videoGAN/AC-ProGAN_2022-10-14_141007/jelita",
+                "--model-name", "jelita",
+                "--images-path", "/shared/results/Skopia/images_split2classes/polip/",
                 "--output-dir", "POLIPY",
-                "--n-batches", "10",
                 "--lr", "2.0",
                 "--num-iters", "300",
             ]
