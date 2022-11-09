@@ -7,15 +7,15 @@
 #SBATCH --cpus-per-task=10
 #SBATCH --mem-per-cpu=20G
 #SBATCH --gres=gpu:1
-#SBATCH --qos=normal  # test (1 GPU, 1 hour), quick (1 GPU, 1 day), normal (2 GPU, 2 days), big (4 GPU, 7 days)
-#SBATCH --partition=dgx  # rtx2080 (mini-servers), dgxteam (dgx1 for Team-Net), dgxmatinf (dgx2 for WMiI), dgx (dgx1 and dgx2)
+#SBATCH --qos=big  # test (1 GPU, 1 hour), quick (1 GPU, 1 day), normal (2 GPU, 2 days), big (4 GPU, 7 days)
+#SBATCH --partition=dgxa100  # rtx2080 (mini-servers), dgxteam (dgx1 for Team-Net), dgxmatinf (dgx2 for WMiI), dgx (dgx1 and dgx2)
 
 #squeue -u ${USER} --Format "JobID:.6 ,Partition:.4 ,Name:.10 ,StateCompact:.2 ,TimeUsed:.11 ,Qos:.7 ,TimeLeft:.11 ,ReasonList:.16 ,Command:.40"
 
 
 current_date=$( date +"%Y-%m-%d_%H%M%S" )
-#add_prox="/TEST_AC-ProGAN_${current_date}"
 add_prox="/AC-ProGAN_${current_date}"
+#add_prox="/AC-ProGAN_2022-10-28_122557"
 #add_prox=""
 
 singularity_images=""
@@ -42,7 +42,8 @@ port=8115
 mkdir -p $dir_results
 
 singularity exec "$singularity_images" python -m visdom.server -port $port &
-singularity exec --nv -B $datasets:/datasets -B $dir_results:/results "$singularity_images" python -u train.py PGAN -c config_jelita.json --restart -n jelita --dir /results --visdom_port $port
+#singularity exec --nv -B $datasets:/datasets -B $dir_results:/results "$singularity_images" python -u train.py PGAN -c config_jelita.json --restart -n jelita --dir /results --visdom_port $port
+singularity exec --nv -B $datasets:/datasets -B $dir_results:/results "$singularity_images" python -u train.py PGAN -c config_jelita.json -n jelita --dir /results --visdom_port $port --save_iter 16000
 
 #singularity exec --nv -B $datasets:/datasets -B $dir_results:/results "$singularity_images" python -u train.py PGAN -c config_cifar10.json --restart -n cifar10 --dir /results --visdom_port $port
 

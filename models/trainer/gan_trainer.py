@@ -143,6 +143,8 @@ class GANTrainer:
         # Loss printing
         self.lossIterEvaluation = lossIterEvaluation
 
+        self.temporary_files = None
+
     def initModel(self):
         r"""
         Initialize the GAN model.
@@ -436,6 +438,7 @@ class GANTrainer:
             shuffle = True
             sampler = None
 
+        print(f"\033[0;36mUsed batch size: {self.modelConfig.miniBatchSize}\033[0m")
         return torch.utils.data.DataLoader(dataset, batch_size=self.modelConfig.miniBatchSize, shuffle=shuffle,
                                            sampler=sampler, num_workers=self.model.n_devices)
 
@@ -542,8 +545,34 @@ class GANTrainer:
             if self.checkPointDir is not None:
                 if i % self.saveIter == 0:
                     labelSave = self.modelLabel + ("_s%d_i%d" % (scale, i))
-                    self.saveCheckpoint(self.checkPointDir,
-                                        labelSave, scale, i)
+                    self.saveCheckpoint(self.checkPointDir, labelSave, scale, i)
+
+                    if self.temporary_files is not None:
+                        try:
+                            os.remove(os.path.join(self.checkPointDir, self.temporary_files + ".pt"))
+                            os.remove(os.path.join(self.checkPointDir, self.temporary_files + "_tmp_config.json"))
+
+                            if self.visualisation is not None:
+                                os.remove(os.path.join(self.checkPointDir, self.temporary_files + '.jpg'))
+                                os.remove(os.path.join(self.checkPointDir, self.temporary_files + '_avg.jpg'))
+                        except OSError:
+                            pass
+                        self.temporary_files = None
+                elif i % 4000 == 0:
+                    labelSave = self.modelLabel + ("_s%d_i%d" % (scale, i))
+                    self.saveCheckpoint(self.checkPointDir, labelSave, scale, i)
+                    
+                    if self.temporary_files is not None:
+                        try:        
+                            os.remove(os.path.join(self.checkPointDir, self.temporary_files + ".pt"))
+                            os.remove(os.path.join(self.checkPointDir, self.temporary_files + "_tmp_config.json"))
+
+                            if self.visualisation is not None:
+                                os.remove(os.path.join(self.checkPointDir, self.temporary_files + '.jpg'))
+                                os.remove(os.path.join(self.checkPointDir, self.temporary_files + '_avg.jpg'))
+                        except OSError:
+                            pass
+                    self.temporary_files = labelSave
 
             if i == maxIter:
                 return True

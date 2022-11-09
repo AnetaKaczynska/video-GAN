@@ -33,12 +33,22 @@ else
 fi
 
 
-dir_results=/shared/results/$USER/videoGAN/AC-ProGAN_2022-10-14_141007
+#dir_results=/shared/results/$USER/videoGAN/AC-ProGAN_2022-10-14_141007
+dir_results=/shared/results/$USER/videoGAN/AC-ProGAN_2022-10-28_122557
 name=jelita
 
 #singularity exec --nv -B $datasets:/datasets -B $dir_results:/results "$singularity_images" python -u eval.py visualization -n $name -m PGAN --showLabels --dir /results --no_vis
 
-singularity exec --nv -B $datasets:/datasets -B $dir_results:/results "$singularity_images" python -u eval.py visualization -n $name -m PGAN --dir /results --save_dataset /results/eval --size_dataset 100 --label 1 --np_vis
+
+
+mkdir -p "${dir_results}/EVALS"
+for label in 0 1; do
+singularity exec --nv -B $datasets:/datasets -B "${dir_results}":/results "$singularity_images" python -u eval.py visualization -n $name -m PGAN --dir /results --save_dataset /results/EVALS/eval_${label} --size_dataset 500 --label ${label} --np_vis --iter 48000
+done
+
+#for it in 16000 32000 48000 56000 64000 72000 80000 88000 96000 104000 112000 120000 128000 136000 144000 152000 160000 168000 176000 184000 192000 200000; do
+#  singularity exec --nv -B $datasets:/datasets -B $dir_results:/results "$singularity_images" python -u eval.py visualization -n $name -m PGAN --dir /results --save_dataset /results/EVALS/eval_${it} --size_dataset 250 --label 1 --np_vis --iter $it
+#done
 
 echo -e "\033[0;1;32mDone - bash script\033[0m"
 

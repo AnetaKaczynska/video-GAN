@@ -54,6 +54,9 @@ class ProgressiveGANTrainer(GANTrainer):
             self.configScheduler = {
                 int(key): value for key, value in configScheduler.items()}
 
+        if miniBatchScheduler is None and 'miniBatchScheduler' in kwargs['config']:  # todo: add [LS]
+            miniBatchScheduler = kwargs['config']['miniBatchScheduler']
+
         self.miniBatchScheduler = {}
         if miniBatchScheduler is not None:
             self.miniBatchScheduler = {

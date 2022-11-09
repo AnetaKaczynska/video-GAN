@@ -1,20 +1,14 @@
 {
   "pathDB": "/datasets/images_train_2",
   "config": {
-    "maxIterAtScale": [
-      48000,
-      96000,
-      96000,
-      96000,
-      96000,
-      96000,
-      96000
-    ]
+    "maxIterAtScale": [48000, 96000, 96000, 96000, 96000, 96000, 96000, 96000, 96000],
+    "miniBatchScheduler": {"7": 12, "8": 8},
+    "miniBatchSize": 16
   },
   "imagefolderDataset": true,
   "balance_batch": true,
   "frequency_distribution": {
-    "None": 0.8,
-    "polip": 0.2
+    "None": 0.7,
+    "polip": 0.3
   }
 }

@@ -72,6 +72,7 @@ def test(parser, visualisation=None):
     modelConfig, pathModel, _ = checkpointData
     if scale is None:
         _, scale, _ = parse_state_name(pathModel)
+    print("Path to model:", pathModel)
 
     keysLabels = None
     with open(modelConfig, 'rb') as file:
