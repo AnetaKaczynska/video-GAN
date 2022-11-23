@@ -51,9 +51,9 @@ def publishTensors(data, out_size_image, caption="", window_token=None, env="mai
     return vis.images(outdata, opts=dict(caption=caption), win=window_token, env=env, nrow=nrow)
 
 
-def saveTensor(data, out_size_image, path):
+def saveTensor(data, out_size_image, path, nrow):
     outdata = resizeTensor(data, out_size_image)
-    vutils.save_image(outdata, path)
+    vutils.save_image(outdata, path, nrow=nrow)
 
 
 def publishLoss(data, name="", window_tokens=None, env="main"):

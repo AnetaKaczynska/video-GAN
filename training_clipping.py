@@ -18,7 +18,7 @@ from visualization.visualizer import saveTensor
 torch.autograd.set_detect_anomaly(True)
 
 
-def load_progan(name='jelita', checkPointDir='/home/bartek/Workspace/studia/bioNN/ac-progan'):
+def load_progan(name='jelita', checkPointDir='/checkpoints/jelita'):
     checkpointData = getLastCheckPoint(checkPointDir, name, scale=6, iter=96000)
     modelConfig, pathModel, tmpconfig = checkpointData
     _, scale, _ = parse_state_name(pathModel)
@@ -48,7 +48,7 @@ def load_progan(name='jelita', checkPointDir='/home/bartek/Workspace/studia/bioN
 if __name__ == "__main__":
 
     epochs = 50
-    batch_size = 3  # 6, 3
+    batch_size = 2  # 6, 3
     learning_rate = 5e-5
     lr_proD = 5e-5  # 1e-5
     clamp_num = 0.01  # WGAN clip gradient
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     torch.cuda.manual_seed(seed_)
 
     date = datetime.now().strftime("%y%m%d-%H%M%S")
-    root_results = f'results/{Path(__file__).resolve().stem.removeprefix("training_")}' \
+    root_results = f'/results/{Path(__file__).resolve().stem.removeprefix("training_")}' \
                    f'_frame{n_frames}_duration{duration}_iterD{iterD}_alphaSimil{alpha_similarity}' \
                    f'{"" if frozen_proD else "_proDISC"}_seed{seed_}_{date}'
     print(f'\033[0;33m{root_results}\033[0m')
@@ -81,8 +81,8 @@ if __name__ == "__main__":
     optimizer_G = optim.RMSprop(fsg.parameters(), lr=learning_rate)
     optimizer_D = optim.RMSprop(vdis.parameters(), lr=learning_rate)
 
-    data_path = Path('/home/bartek/Workspace/studia/bioNN/POLIPY')
-    img_dir = "/home/bartek/film24images"
+    data_path = Path('/datasets')
+    img_dir = data_path / "film24images"
     noise_dir = data_path / "noise"
     dataset = RealVideos(img_dir=str(img_dir), noise_dir=str(noise_dir), num_frame=n_frames, duration=duration)
     dataloader = DataLoader(dataset, num_workers=8, pin_memory=True, batch_size=batch_size, shuffle=True, drop_last=True)
@@ -137,7 +137,7 @@ if __name__ == "__main__":
                 real_loss = -torch.mean(real_preds)
 
                 # Generate fake images
-                noise = torch.randn([batch_size, 2047]).unsqueeze(1).tile(1, duration, 1).view(-1, 2047).to(device)
+                noise = torch.randn([batch_size, 2047]).unsqueeze(1).tile(1, duration, 1).view(-1, 2047).cuda()
                 latent = fsg(noise, real_noise, time.view(-1, 1))
                 fake_video = progan.avgG(latent).detach()
 
@@ -171,7 +171,7 @@ if __name__ == "__main__":
             optimizer_G.zero_grad()
 
             # Generate fake images
-            noise = torch.randn([batch_size, 2047]).unsqueeze(1).tile(1, duration, 1).view(-1, 2047).to(device)
+            noise = torch.randn([batch_size, 2047]).unsqueeze(1).tile(1, duration, 1).view(-1, 2047).cuda()
             latent = fsg(noise, real_noise, time.view(-1, 1))
             fake_video = progan.avgG(latent)
 

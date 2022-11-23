@@ -22,12 +22,15 @@ class FrameSeedGenerator(nn.Module):
         x = self.fc3(x)
 
         one_hot_len = noise.shape[1] - x.shape[1]
-
-        # we want to start from noise
-        x = noise[:, :-one_hot_len] + x - x[0].unsqueeze(0)
+        bs = noise.shape[0]
+        # x = x.reshape(bs, -1, 512)
+        # # we want to start from noise
+        # x = noise[:, :-one_hot_len].unsqueeze(1) + x - x[:, None, 0]
+        # x = x.reshape(-1, 512)
 
         # normalize
-        x = x / LA.norm(x, dim=1, keepdim=True) * math.sqrt(self.D)
+        # x = x / LA.norm(x, dim=1, keepdim=True) * math.sqrt(self.D)
         # append one hot for generator
-        x = torch.cat([x, noise[:, -one_hot_len:].repeat(x.shape[0], 1)], dim=1)
+        one_hots = noise[:, -one_hot_len:]
+        x = torch.cat([x, one_hots.repeat(x.shape[0] // one_hots.shape[0], 1)], dim=1)
         return x
